@@ -199,6 +199,14 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showPromptEditor, setShowPromptEditor] = useState(false);
+  const [apiKey, setApiKey] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gemini_api_key');
+      return saved || "";
+    } catch (e) {
+      return "";
+    }
+  });
   const [systemPrompt, setSystemPrompt] = useState(() => {
     try {
       const saved = localStorage.getItem('system_prompt');
@@ -215,6 +223,15 @@ export default function App() {
       localStorage.setItem('system_prompt', newPrompt);
     } catch (e) {
       console.error('Failed to save to localStorage:', e);
+    }
+  };
+
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    try {
+      localStorage.setItem('gemini_api_key', key);
+    } catch (e) {
+      console.error('Failed to save API Key to localStorage:', e);
     }
   };
 
@@ -321,7 +338,15 @@ export default function App() {
     setResults(prev => ({ ...prev, [i]: "" }));
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const currentApiKey = apiKey || process.env.GEMINI_API_KEY;
+      
+      if (!currentApiKey) {
+        setError("Vui lòng cấu hình API Key trong phần cài đặt (biểu tượng bánh răng) để sử dụng.");
+        setLoading(false);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey: currentApiKey });
       const model = "gemini-3-flash-preview";
       
       const imageData = images[i];
@@ -463,11 +488,13 @@ export default function App() {
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
               <div className="flex items-center gap-2">
                 <Settings className="w-5 h-5 text-orange-500" />
-                <h2 className="font-bold text-lg">Cấu hình System Prompt</h2>
+                <h2 className="font-bold text-lg">Cấu hình hệ thống</h2>
               </div>
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={() => saveSystemPrompt(SYSTEM_INSTRUCTION)}
+                  onClick={() => {
+                    saveSystemPrompt(SYSTEM_INSTRUCTION);
+                  }}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                 >
                   <RotateCcw className="w-3.5 h-3.5" /> Khôi phục mặc định
@@ -480,16 +507,53 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 p-6 overflow-y-auto">
-              <p className="text-sm text-gray-500 mb-4">
-                Đây là hướng dẫn cốt lõi điều khiển AI. Bạn có thể thay đổi quy trình, số lượng prompt, hoặc các nguyên tắc bắt buộc tại đây.
-              </p>
-              <textarea 
-                value={systemPrompt}
-                onChange={(e) => saveSystemPrompt(e.target.value)}
-                className="w-full h-[500px] p-4 font-mono text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none resize-none bg-gray-50"
-                placeholder="Nhập System Instruction tại đây..."
-              />
+            <div className="flex-1 p-6 overflow-y-auto space-y-6">
+              {/* API Key Section */}
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-orange-500" />
+                    Google Gemini API Key
+                  </label>
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-bold text-orange-500 uppercase tracking-wider hover:underline"
+                  >
+                    Lấy Key tại đây
+                  </a>
+                </div>
+                <input 
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => saveApiKey(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none bg-gray-50 font-mono text-sm"
+                  placeholder="Dán API Key của bạn vào đây (AIzaSy...)"
+                />
+                <p className="text-[11px] text-gray-400 italic">
+                  * Key được lưu an toàn trong trình duyệt của bạn (localStorage).
+                </p>
+              </section>
+
+              <hr className="border-gray-100" />
+
+              {/* System Prompt Section */}
+              <section className="space-y-3">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-orange-500" />
+                  System Instruction (Quy trình AI)
+                </label>
+                <p className="text-xs text-gray-500">
+                  Đây là hướng dẫn cốt lõi điều khiển AI. Bạn có thể thay đổi quy trình, số lượng prompt, hoặc các nguyên tắc bắt buộc tại đây.
+                </p>
+                <textarea 
+                  value={systemPrompt}
+                  onChange={(e) => saveSystemPrompt(e.target.value)}
+                  className="w-full h-[400px] p-4 font-mono text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none resize-none bg-gray-50"
+                  placeholder="Nhập System Instruction tại đây..."
+                />
+              </section>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
               <button 
